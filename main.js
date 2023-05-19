@@ -39,8 +39,9 @@ wss.on("connection", function wsConnection(ws) {
 	});
 });
 
+const web_port = parseInt(process.env?.IRC_WEBCHAT_PORT);
 
-app.listen(80, () => {
+app.listen(isNaN(web_port) ? 80 : web_port, () => {
 	console.log("Successfully started meta-IRC page.");
 });
 

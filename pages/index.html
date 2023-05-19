@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+	<head>
+		<meta charset="utf-8">
+		<title>IRC In-Browser</title>
+		<style>
+			.chatMessage .messageAuthor::before {
+				content: "[";
+			}
+			.chatMessage .messageAuthor::after {
+				content: "]:";
+			}
+			.joinMessage .joinText::after {
+				content: " has joined";
+			}
+			.leaveMessage .leaveText::after {
+				content: " has disconnected";
+			}
+			.separator::after {
+				content: " ";
+			}
+		</style>
+	</head>
+	<body>
+		<div class="inputBox" style="position: sticky; top: 0;">
+			<form class="inputForm" action="index.html" method="post" name="chatInput">
+				<table>
+					<td><input id="chatInput" name="content" type="text"></td>
+					<td><input type="submit" value="Send"></td>
+				</table>
+			</form>
+		</div>
+		<div class="contents" id="contents">
+
+		</div>
+		<script type="text/javascript">
+			document.forms.chatInput.onsubmit = window.sendChatMessage = function() {
+				if (!this.content.value) return false;
+				window.ws.send(JSON.stringify({
+					author: window.userName,
+					content: this.content.value,
+					type: "chat"
+				}));
+				this.content.value = "";
+				return false;
+			}
+			class HTMLElementBuilder extends HTMLElement {
+				constructor(tagName, {classes, text}) {
+					super(tagName);
+					if (classes) this.className = classes;
+					if (text) this.innerText = text;
+				}
+			}
+			window.printMessage = function(message) {
+				message = message.data;
+				message = JSON.parse(message);
+				console.log(message);
+				let element = document.createElement("div");
+				switch(message.type) {
+					case "chat":
+						element.className = "chatMessage";
+						element.append(document.createElement("span"));
+						element.children[0].className = "messageAuthor";
+						element.children[0].innerText = message.author;
+						element.append(document.createElement("span"));
+						element.children[1].className = "separator";
+						element.append(document.createElement("span"));
+						element.children[2].className = "messageContent";
+						element.children[2].innerText = message.content;
+
+						document.getElementById("contents").prepend(element);
+						break;
+					case "connect":
+						element.className = "joinMessage"
+						element.append(document.createElement("span"));
+						element.children[0].className = "user";
+						element.children[0].innerText = message.user;
+						element.append(document.createElement("span"));
+						element.children[1].className = "joinText";
+						break;
+					case "disconnect":
+						element.className = "leaveMessage";
+						element.append(document.createElement("span"));
+						element.children[0].className = "user";
+						element.children[0].innerText = message.user;
+						element.append(document.createElement("span"));
+						element.children[1].className = "leaveText";
+						break;
+				}
+				document.getElementById("contents").prepend(element);
+			}
+		</script>
+		<script type="text/javascript">
+			setTimeout(() => {
+				window.userName = window.prompt("Please enter a name.");
+				window.ws = new WebSocket(`ws://${location.hostname}:3000`);
+				window.ws.onmessage = window.printMessage;
+				window.ws.onopen = () => {
+					window.ws.send(JSON.stringify({type: "connect", user: window.userName}));
+				}
+			}, 0); // lets page render before forcing user to connect and put in a name
+		</script>
+	</body>
+</html>
